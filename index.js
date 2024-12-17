@@ -12,9 +12,6 @@ app.use(express.json())
 app.get("/", (req,res)=>{
     res.send("restaurant management system menu is coming")
 })
-
-
-console.log(process.env.DB_USER)
 const uri =
   `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.k8aq9.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -30,11 +27,23 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     const menusCollections = client.db("BistroBoss").collection("allMenus")
-    console.log(menusCollections)
+    const cartsCollections = client.db("BistroBoss").collection("allcarts")
+    
 
     app.get("/menus", async(req,res)=>{
         const result = await menusCollections.find().toArray()
         res.send(result)
+    })
+
+    app.post("/carts", async(req,res)=>{
+      const cartItem = req.body
+      const result = await cartsCollections.insertOne(cartItem)
+      res.send(result) 
+    })
+
+    app.get("/carts", async(req,res)=>{
+      const result = await cartsCollections.find().toArray()
+      res.send(result)
     })
     
     console.log(

@@ -66,6 +66,25 @@ async function run() {
       const result = await usersCollections.insertOne(user)
       res.send(result)
     })
+
+    app.delete("/users/delete/:id", async(req,res)=>{
+      const id = req.params.id 
+      const query = {_id: new ObjectId(id)}
+      const result = await usersCollections.deleteOne(query)
+      res.send(result)
+    })
+
+    app.patch("/users/admin/:id", async(req,res)=>{
+      const id = req.params.id 
+      const query = {_id: new ObjectId(id)}
+      const updateDoc = {
+        $set:{
+          role:"admin"
+        }
+      }
+      const result = await usersCollections.updateOne(query, updateDoc)
+      res.send(result)
+    })
     
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"

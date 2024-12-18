@@ -28,6 +28,7 @@ async function run() {
   try {
     const menusCollections = client.db("BistroBoss").collection("allMenus")
     const cartsCollections = client.db("BistroBoss").collection("allcarts")
+    const usersCollections = client.db("BistroBoss").collection("allusers")
     
 
     app.get("/menus", async(req,res)=>{
@@ -52,6 +53,17 @@ async function run() {
       const id = req.params.id 
       const query = {_id: new ObjectId(id)}
       const result = await cartsCollections.deleteOne(query)
+      res.send(result)
+    })
+
+    app.get("/users", async(req,res)=>{
+      const result = await usersCollections.find().toArray()
+      res.send(result)
+    })
+
+    app.post("/users", async(req,res)=>{
+      const user = req.body 
+      const result = await usersCollections.insertOne(user)
       res.send(result)
     })
     

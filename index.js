@@ -1,6 +1,7 @@
 const express = require("express")
 const app = express()
 const cors = require("cors")
+const jwt = require("jsonwebtoken")
 require("dotenv").config()
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
@@ -30,6 +31,12 @@ async function run() {
     const cartsCollections = client.db("BistroBoss").collection("allcarts")
     const usersCollections = client.db("BistroBoss").collection("allusers")
     
+    // jwt
+    app.post("/jwt", async(req,res)=>{
+      const user = req.body 
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET,{expiresIn: '1h'});
+      res.send({token})
+    })
 
     app.get("/menus", async(req,res)=>{
         const result = await menusCollections.find().toArray()
@@ -67,7 +74,7 @@ async function run() {
       res.send(result)
     })
 
-    app.delete("/users/delete/:id", async(req,res)=>{
+    app.delete("/users/:id", async(req,res)=>{
       const id = req.params.id 
       const query = {_id: new ObjectId(id)}
       const result = await usersCollections.deleteOne(query)

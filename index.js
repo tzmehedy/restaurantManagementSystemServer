@@ -25,74 +25,136 @@ const client = new MongoClient(uri, {
   },
 });
 
+
+
 async function run() {
   try {
-    const menusCollections = client.db("BistroBoss").collection("allMenus")
-    const cartsCollections = client.db("BistroBoss").collection("allcarts")
-    const usersCollections = client.db("BistroBoss").collection("allusers")
-    
-    // jwt
-    app.post("/jwt", async(req,res)=>{
-      const user = req.body 
-      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET,{expiresIn: '1h'});
-      res.send({token})
-    })
+    const menusCollections = client.db("BistroBoss").collection("allMenus");
+    const cartsCollections = client.db("BistroBoss").collection("allcarts");
+    const usersCollections = client.db("BistroBoss").collection("allusers");
 
-    app.get("/menus", async(req,res)=>{
-        const result = await menusCollections.find().toArray()
-        res.send(result)
-    })
-
-    app.post("/carts", async(req,res)=>{
-      const cartItem = req.body
-      const result = await cartsCollections.insertOne(cartItem)
-      res.send(result) 
-    })
-
-    app.get("/carts", async(req,res)=>{
-      const email = req.query.email 
-      const query = {userEmail:email}
-      const result = await cartsCollections.find(query).toArray()
-      res.send(result)
-    })
-
-    app.delete("/carts/:id", async(req,res)=>{
-      const id = req.params.id 
-      const query = {_id: new ObjectId(id)}
-      const result = await cartsCollections.deleteOne(query)
-      res.send(result)
-    })
-
-    app.get("/users", async(req,res)=>{
-      const result = await usersCollections.find().toArray()
-      res.send(result)
-    })
-
-    app.post("/users", async(req,res)=>{
-      const user = req.body 
-      const result = await usersCollections.insertOne(user)
-      res.send(result)
-    })
-
-    app.delete("/users/:id", async(req,res)=>{
-      const id = req.params.id 
-      const query = {_id: new ObjectId(id)}
-      const result = await usersCollections.deleteOne(query)
-      res.send(result)
-    })
-
-    app.patch("/users/admin/:id", async(req,res)=>{
-      const id = req.params.id 
-      const query = {_id: new ObjectId(id)}
-      const updateDoc = {
-        $set:{
-          role:"admin"
-        }
+    // Middleware
+    const verifyToken = (req, res, next) => {
+      const token = req.headers.authorization;
+      console.log("inside the verify", token);
+      if (!token) {
+        return res.status(401).send({ message: "Unauthorized Access" });
       }
-      const result = await usersCollections.updateOne(query, updateDoc)
+
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decode) => {
+        if (err) {
+          return res.status(401).send({ message: "Unauthorized Access" });
+        }
+        const user = decode;
+        console.log(user);
+        req.user = user;
+        next();
+      });
+    };
+
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.user.email;
+      const query = { email: email };
+      const user = await usersCollections.findOne(query);
+      const isAdmin = user?.role === "admin";
+      if (!isAdmin) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      next();
+    };
+
+    // jwt
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
+      res.send({ token });
+    });
+
+    app.get("/menus", async (req, res) => {
+      const result = await menusCollections.find().toArray();
+      res.send(result);
+    });
+
+    app.post("/menus",verifyToken, verifyAdmin, async(req,res)=>{
+      const item = req.body 
+      const result = await menusCollections.insertOne(item)
       res.send(result)
     })
-    
+
+    app.post("/carts", async (req, res) => {
+      const cartItem = req.body;
+      const result = await cartsCollections.insertOne(cartItem);
+      res.send(result);
+    });
+
+    app.get("/carts", async (req, res) => {
+      const email = req.query.email;
+      const query = { userEmail: email };
+      const result = await cartsCollections.find(query).toArray();
+      res.send(result);
+    });
+
+    app.delete("/carts/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await cartsCollections.deleteOne(query);
+      res.send(result);
+    });
+
+    app.get("/users/adminVerify/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      if (email !== req.user.email) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      const query = { email: email };
+      const result = await usersCollections.findOne(query);
+      let admin = false;
+      if (result) {
+        admin = result?.role === "admin";
+      }
+      console.log(admin);
+      res.send({ admin });
+    });
+
+    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
+      const email = req.user.email;
+      console.log(email);
+      const result = await usersCollections.find().toArray();
+      res.send(result);
+    });
+
+    app.post("/users", verifyToken, verifyAdmin, async (req, res) => {
+      const user = req.body;
+      const result = await usersCollections.insertOne(user);
+      res.send(result);
+    });
+
+    app.delete("/users/:id", verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await usersCollections.deleteOne(query);
+      res.send(result);
+    });
+
+    app.patch(
+      "/users/admin/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            role: "admin",
+          },
+        };
+        const result = await usersCollections.updateOne(query, updateDoc);
+        res.send(result);
+      }
+    );
+
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );

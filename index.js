@@ -36,7 +36,6 @@ async function run() {
     // Middleware
     const verifyToken = (req, res, next) => {
       const token = req.headers.authorization;
-      console.log("inside the verify", token);
       if (!token) {
         return res.status(401).send({ message: "Unauthorized Access" });
       }
@@ -46,7 +45,6 @@ async function run() {
           return res.status(401).send({ message: "Unauthorized Access" });
         }
         const user = decode;
-        console.log(user);
         req.user = user;
         next();
       });
@@ -83,6 +81,15 @@ async function run() {
       res.send(result)
     })
 
+    app.delete("/menus/:id", async(req,res)=>{
+
+      const id = req.params.id
+      const query = {_id: new ObjectId(id)}
+     
+      const result = await menusCollections.deleteOne(query)
+      res.send(result)
+    })
+
     app.post("/carts", async (req, res) => {
       const cartItem = req.body;
       const result = await cartsCollections.insertOne(cartItem);
@@ -114,7 +121,6 @@ async function run() {
       if (result) {
         admin = result?.role === "admin";
       }
-      console.log(admin);
       res.send({ admin });
     });
 
@@ -125,7 +131,7 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/users", verifyToken, verifyAdmin, async (req, res) => {
+    app.post("/users", async (req, res) => {
       const user = req.body;
       const result = await usersCollections.insertOne(user);
       res.send(result);
